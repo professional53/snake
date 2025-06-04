@@ -25,12 +25,21 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
 
     //food
     Tile food;
+    Tile WALL;
     Random random;
 
     //game logic
     int velocityX;
     int velocityY;
     Timer gameLoop;
+
+    // other things
+    int Delay;
+    int Scorer; // same as ActualScore ignore this coming before it
+    int ActualScore; // redundant but I don't want to spend the time getting rid of it
+    Color snakeColor;
+    Color foodColor;
+    boolean CCInput = false;
 
     boolean gameOver = false;
 
@@ -44,22 +53,24 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
 
         snakeHead = new Tile(5, 5);
         snakeBody = new ArrayList<Tile>();
+        snakeColor = Color.green;
+        foodColor = Color.red;
 
         food = new Tile(10, 10);
         random = new Random();
-        placeFood();
 
-        velocityX = 1;
-        velocityY = 0;
+        WALL = new Tile(10, 10);
+        placeFood();
         
 		//game timer
-		gameLoop = new Timer(100, this); //how long it takes to start timer, milliseconds gone between frames 
+        Delay = 250;
+		gameLoop = new Timer(Delay, this); //how long it takes to start timer, milliseconds gone between frames
         gameLoop.start();
 	}	
     
     public void paintComponent(Graphics g) {
-		super.paintComponent(g);
-		draw(g);
+        super.paintComponent(g);
+        draw(g);
 	}
 
 	public void draw(Graphics g) {
@@ -71,12 +82,19 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
         }
 
         //Food
-        g.setColor(Color.red);
+        g.setColor(foodColor);
         // g.fillRect(food.x*tileSize, food.y*tileSize, tileSize, tileSize);
         g.fill3DRect(food.x*tileSize, food.y*tileSize, tileSize, tileSize, true);
 
+
+        // Wall
+        g.setColor(Color.darkGray);
+        g.fill3DRect(WALL.x*tileSize, WALL.y*tileSize, tileSize, tileSize, true);
+        g.setColor(Color.gray);
+        g.fill3DRect(WALL.x*tileSize+(tileSize/4), WALL.y*tileSize+(tileSize/4), tileSize-(tileSize/2), tileSize-(tileSize/2), true);
+
         //Snake Head
-        g.setColor(Color.green);
+        g.setColor(snakeColor);
         // g.fillRect(snakeHead.x, snakeHead.y, tileSize, tileSize);
         // g.fillRect(snakeHead.x*tileSize, snakeHead.y*tileSize, tileSize, tileSize);
         g.fill3DRect(snakeHead.x*tileSize, snakeHead.y*tileSize, tileSize, tileSize, true);
@@ -90,26 +108,51 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
 
         //Score
         g.setFont(new Font("Arial", Font.PLAIN, 16));
-        if (gameOver) {
+        if (gameOver && CCInput) {
             g.setColor(Color.red);
-            g.drawString("Game Over: " + String.valueOf(snakeBody.size()), tileSize - 16, tileSize);
+            g.drawString("Game Over: " + ActualScore, tileSize - 16, tileSize);
+            g.setColor(Color.WHITE);
+            g.drawString("Press R to restart ", tileSize - 16, tileSize*2);
+        } else if (gameOver) {
+            g.setColor(Color.red);
+            g.drawString("Game Over: " + ActualScore, tileSize - 16, tileSize);
+            g.setColor(Color.WHITE);
+            g.drawString("Press R to restart ", tileSize - 16, tileSize*2);
+            g.setColor(Color.green);
+            g.setFont(new Font("Arial", Font.BOLD, 30));
+            g.drawString("Press F to unlock In-Game Purchases!!!!!", tileSize - 16, tileSize*3);
         }
         else {
-            g.drawString("Score: " + String.valueOf(snakeBody.size()), tileSize - 16, tileSize);
+            g.setColor(Color.WHITE);
+            g.drawString("Score: " + ActualScore, tileSize - 16, tileSize);
         }
 	}
 
     public void placeFood(){
+        WALL.x = random.nextInt(boardWidth/tileSize);
+        WALL.y = random.nextInt(boardHeight/tileSize);
         food.x = random.nextInt(boardWidth/tileSize);
-		food.y = random.nextInt(boardHeight/tileSize);
+        food.y = random.nextInt(boardHeight/tileSize);
+        while(food.y==WALL.y && food.x==WALL.x){
+            food.x = random.nextInt(boardWidth/tileSize);
+            food.y = random.nextInt(boardHeight/tileSize);
+        }
 	}
 
     public void move() {
         //eat food
         if (collision(snakeHead, food)) {
+            Scorer++;
+            ActualScore++;
+            if(Scorer>=1){
+                Scorer=0;
+                Delay=50+(Delay/2);
+                gameLoop.setDelay(Delay);
+            }
             snakeBody.add(new Tile(food.x, food.y));
             placeFood();
         }
+
 
         //move snake body
         for (int i = snakeBody.size()-1; i >= 0; i--) {
@@ -136,6 +179,9 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
             if (collision(snakeHead, snakePart)) {
                 gameOver = true;
             }
+            if (collision(snakeHead, WALL)) {
+                gameOver = true;
+            }
         }
 
         if (snakeHead.x*tileSize < 0 || snakeHead.x*tileSize > boardWidth || //passed left border or right border
@@ -153,9 +199,14 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
         move();
         repaint();
         if (gameOver) {
+            System.out.println("Final Score: "+ActualScore);
             gameLoop.stop();
         }
-    }  
+    }
+
+    public void OpenMTWindow() {
+
+    }
 
     @Override
     public void keyPressed(KeyEvent e) {
@@ -176,7 +227,89 @@ public class SnakeGame extends JPanel implements ActionListener, KeyListener {
             velocityX = 1;
             velocityY = 0;
         }
+        if (gameOver && e.getKeyCode() == KeyEvent.VK_R) {
+            snakeHead = new Tile(5, 5);
+            snakeBody = new ArrayList<Tile>();
+            random = new Random();
+            placeFood();
+            velocityX = 0;
+            velocityY = 0;
+            ActualScore = 0;
+            Delay = 250;
+            gameOver = false;
+            gameLoop.setDelay(Delay);
+            gameLoop.start();
+        } else if (gameOver && e.getKeyCode() == KeyEvent.VK_F && !CCInput){
+            String finder = JOptionPane.showInputDialog("What is your credit card number?");
+            if (finder != null){
+                JOptionPane.showMessageDialog(null, "Your Number has been recorded for this session.", "Thank You!", 1);
+                CCInput = true;JButton snakeColorBTN = new JButton("[$0.50] Roll Snake Color");
+                snakeColorBTN.setBounds(0, boardHeight/2, 200, 60);
+                snakeColorBTN.addActionListener(new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent arg0){
+                        int rand = random.nextInt(99);
+                        if(rand == 0){
+                            snakeColor = new Color(236,88,0); System.out.println("SNAKE COLOR RESULT: You Rolled Persimmon!!! - MYTHIC");
+                        }else if (rand<=5){
+                            snakeColor = Color.orange; System.out.println("SNAKE COLOR RESULT: You Rolled Orange! - LEGENDARY");
+                        }else if(rand<=15){
+                            snakeColor = new Color(161, 51, 245); System.out.println("SNAKE COLOR RESULT: You Rolled Purple - EPIC");
+                        }else if(rand<=40){
+                            snakeColor = Color.blue; System.out.println("SNAKE COLOR RESULT: You Rolled Blue - RARE");
+                        }else{
+                            snakeColor = Color.green; System.out.println("SNAKE COLOR RESULT: You Rolled Green - COMMON");
+                        }
+                    }
+                });
+                JButton foodColorBTN = new JButton("[$1.00] Roll Food Color");
+                foodColorBTN.setBounds(boardWidth/2+50, boardHeight/2, 200, 60);
+                foodColorBTN.addActionListener(new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent arg0){
+                        int rand = random.nextInt(99);
+                        if(rand == 0){
+                            foodColor = Color.yellow; System.out.println("FOOD COLOR RESULT: You Rolled Yellow! - Legendary");
+                        }else if (rand<=5){
+                            foodColor = Color.pink; System.out.println("FOOD COLOR RESULT: You Rolled Pink! - Epic");
+                        }else if(rand<=15){
+                            foodColor = new Color(42, 140, 130); System.out.println("FOOD COLOR RESULT: You Rolled Teal - Rare");
+                        }else if(rand<=40){
+                            foodColor = new Color(69, 25, 6); System.out.println("FOOD COLOR RESULT: You Rolled Brown - Uncommon");
+                        }else{
+                            foodColor = Color.red; System.out.println("FOOD COLOR RESULT: You Rolled Red - Common");
+                        }
+                    }
+                });
+
+                JFrame MicrotransactionWindow = new JFrame("SUPPORT OUR GAME!");
+                MicrotransactionWindow.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+                MicrotransactionWindow.setSize(boardWidth,boardHeight);
+                MicrotransactionWindow.setLocationRelativeTo(this);
+                MicrotransactionWindow.setResizable(false);
+                MicrotransactionWindow.setLayout(null);
+
+                MicrotransactionWindow.add(snakeColorBTN);
+                MicrotransactionWindow.add(foodColorBTN);
+                MicrotransactionWindow.setVisible(true);
+                snakeHead = new Tile(5, 5);
+                snakeBody = new ArrayList<Tile>();
+                random = new Random();
+                placeFood();
+                velocityX = 0;
+                velocityY = 0;
+                Delay = 250;
+                ActualScore = 0;
+                gameOver = false;
+                gameLoop.setDelay(Delay);
+                gameLoop.start();
+            }
+        }
     }
+
+
 
     //not needed
     @Override
